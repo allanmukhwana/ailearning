@@ -1,24 +1,16 @@
 import streamlit as st
-from arctic import Arctic
-import os
-from dotenv import load_dotenv
+from arctic_helper import conn
+import pandas as pd
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Connect to Snowflake Arctic using environment variables
-conn_details = {
-    'account': os.getenv('SNOWFLAKE_ACCOUNT'),
-    'user': os.getenv('SNOWFLAKE_USER'),
-    'password': os.getenv('SNOWFLAKE_PASSWORD'),
-    'database': os.getenv('SNOWFLAKE_DATABASE'),
-    'schema': os.getenv('SNOWFLAKE_SCHEMA')
-}
-arctic = Arctic(**conn_details)
-
-def main():
-    # Set up the app layout and sidebar inputs
-    st.title("Prenatal and Postnatal Care Advice")
-    type_input = st.sidebar.selectbox("Type", ["Pre Natal", "Post Natal"])
-    time_input = st.sidebar.number_input("Time (in weeks for prenatal or months for postnatal)", min_value=0)
-    health_condition = st.sidebar.text_input("Health Condition (optional)")
+st.title("Pre and Post Natal Care Advice")
+type_input = st.selectbox("Select Type", ["Pre Natal", "Post Natal"])
+time_input = st.number_input("Enter Time (Duration of Pregnancy for Prenatal or Age of Child for Post Natal)", min_value=0)
+health_condition = st.text_input("Enter Health Condition (Condition for mother during prenatal or condition of child for Post Natal)")
+if type_input == "Pre Natal":
+    query = f"SELECT advice FROM pre_natal WHERE duration={time_input} AND mother_condition='{health_condition}'"
+else:
+    query = f"SELECT advice FROM post_natal WHERE age={time_input} AND child_condition='{health_condition}'"
+cursor = conn.cursor()
+cursor.execute(query)
+result = cursor.fetchone()[0]
+st.write(result)
