@@ -8,7 +8,9 @@ openai_api_key = st.secrets["OPENAI_API_KEY"]
 openai.api_key = openai_api_key
 
 # Define the app layout
-st.title("Prenatal and Postnatal Care Assistant")
+
+st.image('https://miro.medium.com/v2/resize:fit:690/1*vg8hAZtD0idNCVLf2tCpCA.jpeg')
+st.title("PPCA - Prenatal and Postnatal Care Assistant")
 st.write("Get personalized advice and guidance for a healthy pregnancy and parenthood journey.")
 
 # Input fields
