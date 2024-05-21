@@ -11,7 +11,7 @@ SF_DB = st.secrets["SF_DB"]
 SF_SCHEMA = st.secrets["SF_SCHEMA"]
 
 # Create an Arctic instance
-arctic = Arctic(account=SF_ACCOUNT, user=SF_USER, password=SF_PASSWORD, warehouse=SF_WAREHOUSE, database=SF_DB, schema=SF_SCHEMA)
+#arctic = Arctic(account=SF_ACCOUNT, user=SF_USER, password=SF_PASSWORD, warehouse=SF_WAREHOUSE, database=SF_DB, schema=SF_SCHEMA)
 
 # Define the Streamlit app
 st.title("Prenatal and Postnatal Care Assistant")
@@ -30,7 +30,7 @@ health_condition = st.text_input(health_condition_label)
 
 generate_button = st.button("Generate Care Plan")
 
-if generate_button:
-    prompt = f"Create a care plan for a {type.lower()} mother with a {time_label} of {time} and {health_condition_label} of {health_condition}."
-    response = arctic.generate(prompt)
-    st.write(response)
+#if generate_button:
+   # prompt = f"Create a care plan for a {type.lower()} mother with a {time_label} of {time} and {health_condition_label} of {health_condition}."
+    #response = arctic.generate(prompt)
+    #st.write(response)
