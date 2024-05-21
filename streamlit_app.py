@@ -1,6 +1,4 @@
 import streamlit as st
-import os
-#from snowflake.arctic import Arctic
 
 # Set up Snowflake Arctic connection secrets
 SF_ACCOUNT = st.secrets["SF_ACCOUNT"]
