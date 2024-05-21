@@ -41,8 +41,8 @@ def generate_advice(type, time, health_condition):
   frequency_penalty=0,
   presence_penalty=0
     )
-
-   return response.choices[0].message.content
+    
+    return response.choices[0].message.content
 
 # Display generated advice
 if generate_button:
