@@ -22,14 +22,24 @@ generate_button = st.button("Get Advice")
 # Function to generate advice using GPT-4
 def generate_advice(type, time, health_condition):
     prompt = f"Provide personalized advice and guidance for a {type} mother with a {time} {'' if type == 'Pre Natal' else 'onth old'} {'' if type == 'Pre Natal' else 'child'} who has a {health_condition}."
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=1024,
-        temperature=0.5,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
+    response = openai.chat.completions.create(
+         model="gpt-4o",
+  messages=[
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": prompt
+        }
+      ]
+    }
+  ],
+  temperature=1,
+  max_tokens=256,
+  top_p=1,
+  frequency_penalty=0,
+  presence_penalty=0
     )
     return response.choices[0].text
 
