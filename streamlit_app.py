@@ -42,7 +42,7 @@ def generate_advice(type, time, health_condition):
   presence_penalty=0
     )
 
-    assistant_content = response['choices'][0]['message']['content']
+    assistant_content = response
     
     return assistant_content
 
