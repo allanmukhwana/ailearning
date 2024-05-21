@@ -1,34 +1,39 @@
+# app.py
 import streamlit as st
+import os
+import openai
 
-# Set up Snowflake Arctic connection secrets
-SF_ACCOUNT = st.secrets["SF_ACCOUNT"]
-SF_USER = st.secrets["SF_USER"]
-SF_PASSWORD = st.secrets["SF_PASSWORD"]
-SF_WAREHOUSE = st.secrets["SF_WAREHOUSE"]
-SF_DB = st.secrets["SF_DB"]
-SF_SCHEMA = st.secrets["SF_SCHEMA"]
+# Set up OpenAI API connection using Streamlit secrets
+openai_api_key = st.secrets["OPENAI_API_KEY"]
+openai.api_key = openai_api_key
 
-# Create an Arctic instance
-#arctic = Arctic(account=SF_ACCOUNT, user=SF_USER, password=SF_PASSWORD, warehouse=SF_WAREHOUSE, database=SF_DB, schema=SF_SCHEMA)
-
-# Define the Streamlit app
+# Define the app layout
 st.title("Prenatal and Postnatal Care Assistant")
+st.write("Get personalized advice and guidance for a healthy pregnancy and parenthood journey.")
 
-type = st.selectbox("Select Type", ["Pre Natal", "Post Natal"])
+# Input fields
+type_input = st.selectbox("Type", ["Pre Natal", "Post Natal"])
+time_input = st.number_input("Time (weeks for Pre Natal, months for Post Natal)", value=0)
+health_condition_input = st.text_input("Health Condition (for mother during Pre Natal or child during Post Natal)")
 
-if type == "Pre Natal":
-    time_label = "Duration of Pregnancy (weeks)"
-    health_condition_label = "Mother's Health Condition"
-else:
-    time_label = "Age of Child (months)"
-    health_condition_label = "Child's Health Condition"
+# Button to generate advice
+generate_button = st.button("Get Advice")
 
-time = st.slider(time_label, 0, 40, 20)
-health_condition = st.text_input(health_condition_label)
+# Function to generate advice using GPT-4
+def generate_advice(type, time, health_condition):
+    prompt = f"Provide personalized advice and guidance for a {type} mother with a {time} {'' if type == 'Pre Natal' else 'onth old'} {'' if type == 'Pre Natal' else 'child'} who has a {health_condition}."
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        max_tokens=1024,
+        temperature=0.5,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    return response.choices[0].text
 
-generate_button = st.button("Generate Care Plan")
-
-#if generate_button:
-   # prompt = f"Create a care plan for a {type.lower()} mother with a {time_label} of {time} and {health_condition_label} of {health_condition}."
-    #response = arctic.generate(prompt)
-    #st.write(response)
+# Display generated advice
+if generate_button:
+    advice = generate_advice(type_input, time_input, health_condition_input)
+    st.write(advice)
