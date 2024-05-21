@@ -1,60 +1,36 @@
-# app.py
 import streamlit as st
-import pandas as pd
-import snowflake.connector
-from snowflake.connector import ProgrammingError
+import os
+from snowflake.arctic import Arctic
 
-# Set up secrets for Snowflake connection
-st.secrets["SNOWFLAKE_ACCOUNT"] = "your_account_name"
-st.secrets["SNOWFLAKE_USER"] = "your_username"
-st.secrets["SNOWFLAKE_PASSWORD"] = "your_password"
-st.secrets["SNOWFLAKE_WAREHOUSE"] = "your_warehouse_name"
-st.secrets["SNOWFLAKE_DB"] = "your_database_name"
-st.secrets["SNOWFLAKE_SCHEMA"] = "your_schema_name"
+# Set up Snowflake Arctic connection secrets
+SF_ACCOUNT = st.secrets["SF_ACCOUNT"]
+SF_USER = st.secrets["SF_USER"]
+SF_PASSWORD = st.secrets["SF_PASSWORD"]
+SF_WAREHOUSE = st.secrets["SF_WAREHOUSE"]
+SF_DB = st.secrets["SF_DB"]
+SF_SCHEMA = st.secrets["SF_SCHEMA"]
 
-# Create Snowflake connection
-conn = snowflake.connector.connect(
-    user=st.secrets["SNOWFLAKE_USER"],
-    password=st.secrets["SNOWFLAKE_PASSWORD"],
-    account=st.secrets["SNOWFLAKE_ACCOUNT"],
-    warehouse=st.secrets["SNOWFLAKE_WAREHOUSE"],
-    database=st.secrets["SNOWFLAKE_DB"],
-    schema=st.secrets["SNOWFLAKE_SCHEMA"]
-)
+# Create an Arctic instance
+arctic = Arctic(account=SF_ACCOUNT, user=SF_USER, password=SF_PASSWORD, warehouse=SF_WAREHOUSE, database=SF_DB, schema=SF_SCHEMA)
 
-# Create a cursor object
-cur = conn.cursor()
-
-def get_prenatal_care(type, time, health_condition):
-    query = """
-        SELECT *
-        FROM prenatal_care
-        WHERE type = %s AND duration_of_pregnancy = %s AND health_condition = %s
-    """
-    cur.execute(query, (type, time, health_condition))
-    results = cur.fetchall()
-    return pd.DataFrame(results, columns=["recommendation", "description"])
-
-def get_postnatal_care(type, time, health_condition):
-    query = """
-        SELECT *
-        FROM postnatal_care
-        WHERE type = %s AND age_of_child = %s AND health_condition = %s
-    """
-    cur.execute(query, (type, time, health_condition))
-    results = cur.fetchall()
-    return pd.DataFrame(results, columns=["recommendation", "description"])
-
+# Define the Streamlit app
 st.title("Prenatal and Postnatal Care Assistant")
 
-type = st.selectbox("Select type", ["Pre Natal", "Post Natal"])
-time = st.slider("Duration of pregnancy (weeks) or Age of child (months)", 0, 40)
-health_condition = st.text_input("Enter health condition (e.g. diabetes, hypertension)")
+type = st.selectbox("Select Type", ["Pre Natal", "Post Natal"])
 
-if st.button("Get Recommendations"):
-    if type == "Pre Natal":
-        results = get_prenatal_care(type, time, health_condition)
-    else:
-        results = get_postnatal_care(type, time, health_condition)
-    
-    st.write(results)
+if type == "Pre Natal":
+    time_label = "Duration of Pregnancy (weeks)"
+    health_condition_label = "Mother's Health Condition"
+else:
+    time_label = "Age of Child (months)"
+    health_condition_label = "Child's Health Condition"
+
+time = st.slider(time_label, 0, 40, 20)
+health_condition = st.text_input(health_condition_label)
+
+generate_button = st.button("Generate Care Plan")
+
+if generate_button:
+    prompt = f"Create a care plan for a {type.lower()} mother with a {time_label} of {time} and {health_condition_label} of {health_condition}."
+    response = arctic.generate(prompt)
+    st.write(response)
