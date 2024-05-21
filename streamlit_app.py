@@ -44,7 +44,7 @@ def generate_advice(type, time, health_condition):
 
     assistant_content = response
     
-    return assistant_content
+    print(assistant_content)
 
 # Display generated advice
 if generate_button:
