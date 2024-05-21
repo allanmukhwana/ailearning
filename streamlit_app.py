@@ -1,97 +1,60 @@
+# app.py
 import streamlit as st
-import replicate
-import os
-from transformers import AutoTokenizer
+import pandas as pd
+import snowflake.connector
+from snowflake.connector import ProgrammingError
 
-# Set assistant icon to Snowflake logo
-icons = {"assistant": "./Snowflake_Logomark_blue.svg", "user": "⛷️"}
+# Set up secrets for Snowflake connection
+st.secrets["SNOWFLAKE_ACCOUNT"] = "your_account_name"
+st.secrets["SNOWFLAKE_USER"] = "your_username"
+st.secrets["SNOWFLAKE_PASSWORD"] = "your_password"
+st.secrets["SNOWFLAKE_WAREHOUSE"] = "your_warehouse_name"
+st.secrets["SNOWFLAKE_DB"] = "your_database_name"
+st.secrets["SNOWFLAKE_SCHEMA"] = "your_schema_name"
 
-# App title
-st.set_page_config(page_title="Snowflake Arctic")
+# Create Snowflake connection
+conn = snowflake.connector.connect(
+    user=st.secrets["SNOWFLAKE_USER"],
+    password=st.secrets["SNOWFLAKE_PASSWORD"],
+    account=st.secrets["SNOWFLAKE_ACCOUNT"],
+    warehouse=st.secrets["SNOWFLAKE_WAREHOUSE"],
+    database=st.secrets["SNOWFLAKE_DB"],
+    schema=st.secrets["SNOWFLAKE_SCHEMA"]
+)
 
-# Replicate Credentials
-with st.sidebar:
-    st.title('Snowflake Arctic')
-    if 'REPLICATE_API_TOKEN' in st.secrets:
-        #st.success('API token loaded!', icon='✅')
-        replicate_api = st.secrets['REPLICATE_API_TOKEN']
-    else:
-        replicate_api = st.text_input('Enter Replicate API token:', type='password')
-        if not (replicate_api.startswith('r8_') and len(replicate_api)==40):
-            st.warning('Please enter your Replicate API token.', icon='⚠️')
-            st.markdown("**Don't have an API token?** Head over to [Replicate](https://replicate.com) to sign up for one.")
-        #else:
-        #    st.success('API token loaded!', icon='✅')
+# Create a cursor object
+cur = conn.cursor()
 
-    os.environ['REPLICATE_API_TOKEN'] = replicate_api
-    st.subheader("Adjust model parameters")
-    temperature = st.sidebar.slider('temperature', min_value=0.01, max_value=5.0, value=0.3, step=0.01)
-    top_p = st.sidebar.slider('top_p', min_value=0.01, max_value=1.0, value=0.9, step=0.01)
-
-# Store LLM-generated responses
-if "messages" not in st.session_state.keys():
-    st.session_state.messages = [{"role": "assistant", "content": "Hi. I'm Arctic, a new, efficient, intelligent, and truly open language model created by Snowflake AI Research. Ask me anything."}]
-
-# Display or clear chat messages
-for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar=icons[message["role"]]):
-        st.write(message["content"])
-
-def clear_chat_history():
-    st.session_state.messages = [{"role": "assistant", "content": "Hi. I'm Arctic, a new, efficient, intelligent, and truly open language model created by Snowflake AI Research. Ask me anything."}]
-st.sidebar.button('Clear chat history', on_click=clear_chat_history)
-
-st.sidebar.caption('Built by [Snowflake](https://snowflake.com/) to demonstrate [Snowflake Arctic](https://www.snowflake.com/blog/arctic-open-and-efficient-foundation-language-models-snowflake). App hosted on [Streamlit Community Cloud](https://streamlit.io/cloud). Model hosted by [Replicate](https://replicate.com/snowflake/snowflake-arctic-instruct).')
-
-@st.cache_resource(show_spinner=False)
-def get_tokenizer():
-    """Get a tokenizer to make sure we're not sending too much text
-    text to the Model. Eventually we will replace this with ArcticTokenizer
+def get_prenatal_care(type, time, health_condition):
+    query = """
+        SELECT *
+        FROM prenatal_care
+        WHERE type = %s AND duration_of_pregnancy = %s AND health_condition = %s
     """
-    return AutoTokenizer.from_pretrained("huggyllama/llama-7b")
+    cur.execute(query, (type, time, health_condition))
+    results = cur.fetchall()
+    return pd.DataFrame(results, columns=["recommendation", "description"])
 
-def get_num_tokens(prompt):
-    """Get the number of tokens in a given prompt"""
-    tokenizer = get_tokenizer()
-    tokens = tokenizer.tokenize(prompt)
-    return len(tokens)
+def get_postnatal_care(type, time, health_condition):
+    query = """
+        SELECT *
+        FROM postnatal_care
+        WHERE type = %s AND age_of_child = %s AND health_condition = %s
+    """
+    cur.execute(query, (type, time, health_condition))
+    results = cur.fetchall()
+    return pd.DataFrame(results, columns=["recommendation", "description"])
 
-# Function for generating Snowflake Arctic response
-def generate_arctic_response():
-    prompt = []
-    for dict_message in st.session_state.messages:
-        if dict_message["role"] == "user":
-            prompt.append("<|im_start|>user\n" + dict_message["content"] + "<|im_end|>")
-        else:
-            prompt.append("<|im_start|>assistant\n" + dict_message["content"] + "<|im_end|>")
+st.title("Prenatal and Postnatal Care Assistant")
+
+type = st.selectbox("Select type", ["Pre Natal", "Post Natal"])
+time = st.slider("Duration of pregnancy (weeks) or Age of child (months)", 0, 40)
+health_condition = st.text_input("Enter health condition (e.g. diabetes, hypertension)")
+
+if st.button("Get Recommendations"):
+    if type == "Pre Natal":
+        results = get_prenatal_care(type, time, health_condition)
+    else:
+        results = get_postnatal_care(type, time, health_condition)
     
-    prompt.append("<|im_start|>assistant")
-    prompt.append("")
-    prompt_str = "\n".join(prompt)
-    
-    if get_num_tokens(prompt_str) >= 3072:
-        st.error("Conversation length too long. Please keep it under 3072 tokens.")
-        st.button('Clear chat history', on_click=clear_chat_history, key="clear_chat_history")
-        st.stop()
-
-    for event in replicate.stream("snowflake/snowflake-arctic-instruct",
-                           input={"prompt": prompt_str,
-                                  "prompt_template": r"{prompt}",
-                                  "temperature": temperature,
-                                  "top_p": top_p,
-                                  }):
-        yield str(event)
-
-# User-provided prompt
-if prompt := st.chat_input(disabled=not replicate_api):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar="https://raw.githubusercontent.com/allanmukhwana/ailearning/b9b018c128431280e9ffe04b1094567aa384f23f/bot-icon.png"):
-        st.write(prompt)
-
-# Generate a new response if last message is not from assistant
-if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant", avatar="https://raw.githubusercontent.com/allanmukhwana/ailearning/b9b018c128431280e9ffe04b1094567aa384f23f/bot-icon.png"):
-        response = generate_arctic_response()
-        full_response = st.write_stream(response)
-    message = {"role": "assistant", "content": full_response}
-    st.session_state.messages.append(message)
+    st.write(results)
